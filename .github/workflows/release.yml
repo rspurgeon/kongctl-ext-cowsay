@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.1.0). Created if it doesn't exist."
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -27,3 +33,4 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*.tar.gz
+          tag_name: ${{ inputs.tag || github.ref_name }}
