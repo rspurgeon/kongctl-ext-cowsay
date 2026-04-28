@@ -18,10 +18,24 @@ kongctl install extension rspurgeon/kongctl-ext-cowsay@v0.1.0
 
 ## Usage
 
+Render a message:
+
 ```sh
 kongctl cowsay "hello world"
 kongctl cowsay -W 20 "the quick brown fox jumps over the lazy dog"
 echo "from stdin" | kongctl cowsay
+```
+
+Render the output of a host `kongctl` command via a subcommand:
+
+```sh
+kongctl cowsay me            # pipes `kongctl get me` through the cow
+```
+
+Use `--` to render a literal message that starts with a subcommand name:
+
+```sh
+kongctl cowsay -- me and you
 ```
 
 ## Local development

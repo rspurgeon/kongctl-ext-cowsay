@@ -3,41 +3,22 @@ set -eu
 
 WIDTH=40
 
-while [ $# -gt 0 ]; do
-  case "$1" in
-    -W)
-      shift
-      WIDTH=${1:?-W requires an argument}
-      shift
-      ;;
-    -h|--help)
-      cat <<'EOF'
-Usage: kongctl cowsay [-W width] [--] message...
-       echo message | kongctl cowsay
-EOF
-      exit 0
-      ;;
-    --)
-      shift
-      break
-      ;;
-    -*)
-      echo "kongctl-ext-cowsay: unknown flag: $1" >&2
-      exit 2
-      ;;
-    *)
-      break
-      ;;
-  esac
-done
+resolve_kongctl() {
+  ctx="${KONGCTL_EXTENSION_CONTEXT:-}"
+  if [ -n "$ctx" ] && [ -r "$ctx" ]; then
+    path=$(sed -n \
+      's/^[[:space:]]*"kongctl_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+      "$ctx")
+    if [ -n "$path" ]; then
+      printf '%s\n' "$path"
+      return
+    fi
+  fi
+  printf 'kongctl\n'
+}
 
-if [ $# -eq 0 ]; then
-  msg=$(cat)
-else
-  msg="$*"
-fi
-
-printf '%s\n' "$msg" | awk -v width="$WIDTH" '
+render() {
+  awk -v width="$WIDTH" '
 function repeat(c, n,    s, i) {
   s = ""
   for (i = 0; i < n; i++) s = s c
@@ -81,3 +62,64 @@ END {
   print "                ||     ||"
 }
 '
+}
+
+LITERAL=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -W)
+      shift
+      WIDTH=${1:?-W requires an argument}
+      shift
+      ;;
+    -h|--help)
+      cat <<'EOF'
+Usage:
+  kongctl cowsay [-W width] [--] message...   render message in a speech bubble
+  echo message | kongctl cowsay               render piped input
+  kongctl cowsay me                           render output of `kongctl get me`
+
+Use `--` to render a message that starts with a subcommand name like `me`.
+EOF
+      exit 0
+      ;;
+    --)
+      shift
+      LITERAL=1
+      break
+      ;;
+    -*)
+      echo "kongctl-ext-cowsay: unknown flag: $1" >&2
+      exit 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+sub=""
+if [ "$LITERAL" -eq 0 ]; then
+  sub="${1:-}"
+fi
+
+case "$sub" in
+  me)
+    shift
+    if [ $# -ne 0 ]; then
+      echo "kongctl-ext-cowsay: 'me' takes no arguments" >&2
+      exit 2
+    fi
+    kongctl_bin=$(resolve_kongctl)
+    "$kongctl_bin" get me | render
+    ;;
+  *)
+    if [ $# -eq 0 ]; then
+      msg=$(cat)
+    else
+      msg="$*"
+    fi
+    printf '%s\n' "$msg" | render
+    ;;
+esac
