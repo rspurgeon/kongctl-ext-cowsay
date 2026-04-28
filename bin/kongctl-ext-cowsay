@@ -115,10 +115,12 @@ case "$sub" in
     "$kongctl_bin" get me | render
     ;;
   *)
-    if [ $# -eq 0 ]; then
+    if [ $# -gt 0 ]; then
+      msg="$*"
+    elif [ ! -t 0 ]; then
       msg=$(cat)
     else
-      msg="$*"
+      msg="moo"
     fi
     printf '%s\n' "$msg" | render
     ;;
