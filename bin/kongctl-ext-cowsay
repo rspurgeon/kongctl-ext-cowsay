@@ -1,0 +1,83 @@
+#!/bin/sh
+set -eu
+
+WIDTH=40
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -W)
+      shift
+      WIDTH=${1:?-W requires an argument}
+      shift
+      ;;
+    -h|--help)
+      cat <<'EOF'
+Usage: kongctl cowsay [-W width] [--] message...
+       echo message | kongctl cowsay
+EOF
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "kongctl-ext-cowsay: unknown flag: $1" >&2
+      exit 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if [ $# -eq 0 ]; then
+  msg=$(cat)
+else
+  msg="$*"
+fi
+
+printf '%s\n' "$msg" | awk -v width="$WIDTH" '
+function repeat(c, n,    s, i) {
+  s = ""
+  for (i = 0; i < n; i++) s = s c
+  return s
+}
+{
+  nf = split($0, words, " ")
+  line = ""
+  for (i = 1; i <= nf; i++) {
+    w = words[i]
+    if (w == "") continue
+    if (line == "") {
+      line = w
+    } else if (length(line) + 1 + length(w) <= width) {
+      line = line " " w
+    } else {
+      lines[++nlines] = line
+      if (length(line) > maxlen) maxlen = length(line)
+      line = w
+    }
+  }
+  lines[++nlines] = line
+  if (length(line) > maxlen) maxlen = length(line)
+}
+END {
+  if (nlines == 0) { lines[++nlines] = ""; maxlen = 0 }
+  print " " repeat("_", maxlen + 2)
+  for (i = 1; i <= nlines; i++) {
+    pad = maxlen - length(lines[i])
+    if (nlines == 1)      { l = "<"; r = ">" }
+    else if (i == 1)      { l = "/"; r = "\\" }
+    else if (i == nlines) { l = "\\"; r = "/" }
+    else                  { l = "|"; r = "|" }
+    printf "%s %s%s %s\n", l, lines[i], repeat(" ", pad), r
+  }
+  print " " repeat("-", maxlen + 2)
+  print "        \\   ^__^"
+  print "         \\  (oo)\\_______"
+  print "            (__)\\       )\\/\\"
+  print "                ||----w |"
+  print "                ||     ||"
+}
+'

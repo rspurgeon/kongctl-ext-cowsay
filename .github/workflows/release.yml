@@ -1,0 +1,29 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build release archive
+        run: |
+          mkdir -p dist/package/bin
+          cp extension.yaml README.md dist/package/
+          cp bin/kongctl-ext-cowsay dist/package/bin/
+          chmod +x dist/package/bin/kongctl-ext-cowsay
+          tar -C dist/package -czf \
+            dist/kongctl-ext-cowsay-universal.tar.gz \
+            extension.yaml README.md bin/kongctl-ext-cowsay
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.tar.gz

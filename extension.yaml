@@ -1,0 +1,11 @@
+schema_version: 1
+
+publisher: rspurgeon
+name: cowsay
+
+runtime:
+  command: bin/kongctl-ext-cowsay
+
+command_paths:
+  - path:
+      - name: cowsay
