@@ -23,12 +23,12 @@ jobs:
       - name: Build release archive
         run: |
           mkdir -p dist/package/bin
-          cp extension.yaml README.md dist/package/
+          cp kongctl-extension.yaml README.md dist/package/
           cp bin/kongctl-ext-cowsay dist/package/bin/
           chmod +x dist/package/bin/kongctl-ext-cowsay
           tar -C dist/package -czf \
             dist/kongctl-ext-cowsay-universal.tar.gz \
-            extension.yaml README.md bin/kongctl-ext-cowsay
+            kongctl-extension.yaml README.md bin/kongctl-ext-cowsay
 
       - uses: softprops/action-gh-release@v2
         with:
