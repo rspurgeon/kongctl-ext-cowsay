@@ -17,6 +17,31 @@ resolve_kongctl() {
   printf 'kongctl\n'
 }
 
+json_str() {
+  printf '%s\n' "$1" | sed -n 's/.*"'"$2"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1
+}
+
+greet_me() {
+  kongctl_bin=$(resolve_kongctl)
+  if ! json=$("$kongctl_bin" get me --output json 2>/dev/null); then
+    echo "kongctl-ext-cowsay: failed to run '$kongctl_bin get me'" >&2
+    exit 1
+  fi
+
+  name=$(json_str "$json" preferred_name)
+  [ -z "$name" ] && name=$(json_str "$json" full_name)
+  [ -z "$name" ] && name="friend"
+
+  created=$(json_str "$json" created_at)
+  since=${created%%T*}
+
+  if [ -n "$since" ]; then
+    printf 'Hello %s\nYou'\''ve been using Konnect since %s!\n' "$name" "$since" | render
+  else
+    printf 'Hello %s\n' "$name" | render
+  fi
+}
+
 render() {
   awk -v width="$WIDTH" '
 function repeat(c, n,    s, i) {
@@ -111,8 +136,7 @@ case "$sub" in
       echo "kongctl-ext-cowsay: 'me' takes no arguments" >&2
       exit 2
     fi
-    kongctl_bin=$(resolve_kongctl)
-    "$kongctl_bin" get me | render
+    greet_me
     ;;
   *)
     if [ $# -gt 0 ]; then
