@@ -42,6 +42,47 @@ greet_me() {
   fi
 }
 
+list_apis() {
+  kongctl_bin=$(resolve_kongctl)
+  if ! json=$("$kongctl_bin" get apis --output json 2>/dev/null); then
+    echo "kongctl-ext-cowsay: failed to run '$kongctl_bin get apis'" >&2
+    exit 1
+  fi
+
+  names=$(printf '%s\n' "$json" | awk '
+    {
+      if (depth == 1 && match($0, /"name"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
+        v = substr($0, RSTART, RLENGTH)
+        sub(/"name"[[:space:]]*:[[:space:]]*"/, "", v)
+        sub(/"$/, "", v)
+        print v
+      }
+      n = length($0)
+      for (i = 1; i <= n; i++) {
+        c = substr($0, i, 1)
+        if (c == "{") depth++
+        else if (c == "}") depth--
+      }
+    }
+  ')
+
+  if [ -z "$names" ]; then
+    printf 'No APIs to show!\n' | render
+  else
+    seed=$(od -An -N4 -tu4 < /dev/urandom 2>/dev/null | tr -d ' \n')
+    : "${seed:=$$}"
+    greeting=$(awk -v seed="$seed" 'BEGIN {
+      srand(seed)
+      n = split("Holy cow, APIs!|Moo! Look what I found:|Udderly fantastic APIs:|Moooove over, APIs incoming!|Hay there! Some APIs:", g, "|")
+      print g[int(rand() * n) + 1]
+    }')
+    {
+      printf '%s\n' "$greeting"
+      printf '%s\n' "$names" | sed 's/^/- /'
+    } | render
+  fi
+}
+
 render() {
   awk -v width="$WIDTH" '
 function repeat(c, n,    s, i) {
@@ -103,7 +144,8 @@ while [ $# -gt 0 ]; do
 Usage:
   kongctl cowsay [-W width] [--] message...   render message in a speech bubble
   echo message | kongctl cowsay               render piped input
-  kongctl cowsay me                           render output of `kongctl get me`
+  kongctl cowsay me                           greet the current Konnect user
+  kongctl cowsay api                          list APIs from `kongctl get apis`
 
 Use `--` to render a message that starts with a subcommand name like `me`.
 EOF
@@ -137,6 +179,14 @@ case "$sub" in
       exit 2
     fi
     greet_me
+    ;;
+  api)
+    shift
+    if [ $# -ne 0 ]; then
+      echo "kongctl-ext-cowsay: 'api' takes no arguments" >&2
+      exit 2
+    fi
+    list_apis
     ;;
   *)
     if [ $# -gt 0 ]; then
